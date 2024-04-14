@@ -1,0 +1,72 @@
+import feedparser
+from datetime import datetime, date
+import yfinance as yf
+
+def get_company_description(stock_symbol):
+    return "Company description not available for this stock symbol."
+
+def parse_date(date_str):
+    formats_to_try = [
+        "%a, %d %b %Y %H:%M:%S %Z",
+        "%a, %d %b %Y %H:%M:%S %z",
+        "%a, %d %b %Y %H:%M:%S",
+        "%a, %d %b %Y %H:%M:%S %Z %z",
+    ]
+
+    for fmt in formats_to_try:
+        try:
+            return datetime.strptime(date_str, fmt).date()
+        except ValueError:
+            continue
+
+    return None
+
+def get_news_by_date(stock_symbol, target_date, num_articles=5):
+    url = f"https://finance.yahoo.com/rss/headline?s={stock_symbol}"
+    feed = feedparser.parse(url)
+    news_list = []
+
+    for entry in feed.entries:
+        title = entry.title
+        link = entry.link
+        published_date = entry.published
+
+        published_date_only = parse_date(published_date)
+
+        if published_date_only is not None and published_date_only == target_date:
+            news_list.append({'title': title, 'link': link, 'published_date': published_date})
+
+            # Limit the number of articles
+            if len(news_list) == num_articles:
+                break
+
+    return news_list
+
+def main():
+    print("Welcome to the Stock Information & News Fetcher!")
+    while True:
+        stock_symbol = input("Please enter the stock symbol (e.g., AAPL, GOOGL): ").strip().upper()
+        if stock_symbol == "EXIT":
+            print("Exiting the program.")
+            break
+
+        date_input = input("Enter a date (YYYY-MM-DD) to fetch news articles for that date (leave blank for today): ").strip()
+        if date_input:
+            target_date = datetime.strptime(date_input, "%Y-%m-%d").date()
+            news_list = get_news_by_date(stock_symbol, target_date)
+            print(f"\nNews Articles for {stock_symbol} on {target_date}:")
+        else:
+            target_date = date.today()
+            news_list = get_news_by_date(stock_symbol, target_date, num_articles=5)
+            print(f"\nToday's News Articles for {stock_symbol}:")
+
+        if news_list:
+            for index, news in enumerate(news_list, 1):
+                print(f"{index}. {news['title']}")
+                print(f"   Link: {news['link']}")
+                print(f"   Published Date: {news['published_date']}\n")
+        else:
+            print("No news articles found for the specified date.\n")
+
+if __name__ == "__main__":
+    main()
